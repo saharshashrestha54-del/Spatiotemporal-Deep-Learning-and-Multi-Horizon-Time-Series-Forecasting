@@ -1,0 +1,4 @@
+Model,Lead Time,RMSE (mm),MAE (mm),KGE,CSI,FAR
+Linear Baseline (Ridge),24h,6.85,4.67,-0.22,0.0,0.0
+Random Forest Regressor,24h,6.54,4.41,-0.17,0.0,0.0
+XGBoost Baseline,24h,6.16,4.12,-0.01,0.0,0.0

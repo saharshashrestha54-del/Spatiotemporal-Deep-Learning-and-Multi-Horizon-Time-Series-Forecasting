@@ -1,0 +1,14 @@
+soil_moisture
+prev_year_rainfall
+prev_2yr_rainfall
+prev_year_soil_moisture
+rolling_mean_rainfall_3yr
+rolling_std_rainfall_3yr
+rolling_mean_soil_3yr
+rainfall_yoy_change
+soil_moisture_yoy_change
+rainfall_anomaly_z
+soil_anomaly_z
+soil_rainfall_interaction
+soil_rainfall_ratio
+year_normalized

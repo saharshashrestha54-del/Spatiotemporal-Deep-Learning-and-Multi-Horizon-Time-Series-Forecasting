@@ -1,0 +1,49 @@
+# Python / Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Large raw satellite data & archives (can be downloaded via scripts in src/data/)
+data/raw/*.nc
+data/raw/*.zip
+data/raw/chirps/temp_*
+data/raw/imerg/temp_*
+data/raw/era5/temp_*
+
+# Model checkpoints & large binary dumps
+saved_models/
+*.pt
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# IDE / OS metadata
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# MS Office temp lock files
+~$*.docx
+~$*.xlsx
+test_*.py
+test_*.docx
+
+# LaTeX build artifacts (if compiled locally)
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.fls
+*.fdb_latexmk

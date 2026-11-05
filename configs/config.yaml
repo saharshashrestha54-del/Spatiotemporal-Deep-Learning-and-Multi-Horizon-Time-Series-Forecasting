@@ -1,0 +1,106 @@
+project:
+  name: "Nepal-Monsoon-Early-Warning"
+  description: "Spatiotemporal Deep Learning & Multi-Horizon Early Warning for Monsoon Flooding in Nepal"
+  version: "1.0.0"
+  random_seed: 42
+
+# Spatial domain: Nepal & surrounding transboundary catchment buffers
+spatial:
+  country: "Nepal"
+  bounding_box:
+    # [min_lon, min_lat, max_lon, max_lat]
+    bbox_wgs84: [80.0, 26.3, 88.2, 30.5]
+    min_latitude: 26.3
+    max_latitude: 30.5
+    min_longitude: 80.0
+    max_longitude: 88.2
+  target_basins:
+    - name: "Koshi"
+      code: "KSH"
+      critical_gauges: ["Chatara", "Dharan", "Mulghat"]
+    - name: "Gandaki"
+      code: "GND"
+      critical_gauges: ["Narayangarh", "Devghat", "Kotagaon"]
+    - name: "Karnali"
+      code: "KRN"
+      critical_gauges: ["Chisapani", "Asaraghat"]
+    - name: "West_Rapti"
+      code: "WRP"
+      critical_gauges: ["Kusum", "Bagmati_Karmaiya"]
+
+# Temporal configuration
+temporal:
+  train_years: [2001, 2019]
+  val_years: [2020, 2021]
+  test_years: [2022, 2023]
+  # Monsoon active season: June 1 to September 30
+  monsoon_months: [6, 7, 8, 9]
+  temporal_resolutions:
+    short_term_nowcast_min: 30
+    catchment_forecast_hours: 3
+
+# Forecast lead horizons
+forecasting:
+  lead_horizons_hours: [6, 12, 24, 48]
+  spatial_resolution_deg: 0.1  # ~10 km grid resolution
+
+# Paths configuration
+paths:
+  raw_data_dir: "data/raw"
+  processed_data_dir: "data/processed"
+  shapefiles_dir: "data/shapefiles"
+  models_dir: "saved_models"
+  outputs_dir: "outputs"
+  logs_dir: "outputs/logs"
+
+# Data Sources & Remote Sensing Products
+data_sources:
+  chirps:
+    product: "CHIRPS-2.0"
+    resolution_deg: 0.05
+    cadence: "daily"
+    url_base: "https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_daily/netcdf/p05/"
+  gpm_imerg:
+    product: "GPM_3IMERGHHE" # Half-hourly Early/Late Run or Daily Final Run
+    resolution_deg: 0.1
+    api_source: "NASA Earthdata GES DISC"
+  era5_land:
+    variables:
+      - "total_precipitation"
+      - "volumetric_soil_water_layer_1"
+      - "volumetric_soil_water_layer_2"
+      - "2m_temperature"
+      - "surface_pressure"
+    api_source: "Copernicus Climate Data Store (CDS)"
+  dhm_gauge:
+    station_metadata: "data/raw/dhm_stations_metadata.csv"
+    gauge_timeseries: "data/raw/dhm_precipitation_gauge_daily.csv"
+    hydrology_timeseries: "data/raw/dhm_river_discharge_daily.csv"
+
+# Model hyperparameters
+models:
+  baseline_xgboost:
+    n_estimators: 300
+    max_depth: 6
+    learning_rate: 0.03
+    subsample: 0.8
+    colsample_bytree: 0.8
+  
+  tft: # Temporal Fusion Transformer
+    hidden_size: 64
+    attention_head_size: 4
+    dropout: 0.15
+    hidden_continuous_size: 32
+    loss: "QuantileLoss"
+    quantiles: [0.1, 0.5, 0.9]
+    max_epochs: 50
+    batch_size: 64
+    learning_rate: 0.001
+
+  conv_lstm:
+    input_channels: 4 # Rainfall + SoilMoisture + Elevation + LaggedRain
+    hidden_channels: [64, 64, 32]
+    kernel_size: 3
+    num_layers: 3
+    batch_size: 16
+    learning_rate: 0.0005
