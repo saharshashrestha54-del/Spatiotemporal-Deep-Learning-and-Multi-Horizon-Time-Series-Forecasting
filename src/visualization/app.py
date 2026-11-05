@@ -166,7 +166,9 @@ elif view_mode == "📈 Multi-Horizon Forecast Explorer":
         with colB:
             st.markdown("### 💡 Early Warning Value")
             st.info(
-                
+                "**Why 24h Predictive Warning Matters:**\n\n"
+                "• **Traditional Gauges:** Downstream river stages afford only 2–4 hours warning.\n\n"
+                "• **Coupled ML Forecasting:** Anticipates extreme storm cells and antecedent soil saturation 12–24 hours ahead, enabling timely municipal evacuation."
             )
             st.image("figures/monsoon_rpi_leadtime_evaluation.png", caption="Model Dynamic Alert Matrix", use_container_width=True)
 
