@@ -1,46 +1,27 @@
-"""
-ERA5-Land Reanalysis Data Acquisition Pipeline
-Project: Monsoon Precipitation Forecasting & Flood Early Warning in Nepal
-
-Downloads ERA5-Land hourly/daily reanalysis variables from the Copernicus Climate
-Data Store (CDS) for the Nepal spatial domain and monsoon season.
-
-PREREQUISITES:
-    1. Create a free account at https://cds.climate.copernicus.eu/
-    2. Go to your profile → API tokens
-    3. Create ~/.cdsapirc with:
-         url: https://cds.climate.copernicus.eu/api
-         key: <your-uid>:<your-api-key>
-    4. Accept the ERA5-Land licence in the CDS portal
-"""
-
-import os
+﻿import os
 import sys
 import yaml
 import cdsapi
 from pathlib import Path
 from datetime import datetime
 
-
 def load_config(config_path: str = "configs/config.yaml") -> dict:
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
-
-# Variables to download and their CDS parameter names
 ERA5_VARIABLES = {
     "soil_moisture": {
         "dataset": "reanalysis-era5-land",
         "variables": [
-            "volumetric_soil_water_layer_1",   # 0-7 cm
-            "volumetric_soil_water_layer_2",   # 7-28 cm
+            "volumetric_soil_water_layer_1",
+            "volumetric_soil_water_layer_2",
         ],
         "description": "Top-layer soil moisture for antecedent saturation states"
     },
     "atmospheric": {
         "dataset": "reanalysis-era5-single-levels",
         "variables": [
-            "convective_available_potential_energy",  # CAPE
+            "convective_available_potential_energy",
             "total_column_water_vapour",
         ],
         "description": "Atmospheric instability & moisture for convection"
@@ -58,7 +39,6 @@ ERA5_VARIABLES = {
     },
 }
 
-
 def download_era5_year(
     client: cdsapi.Client,
     year: int,
@@ -70,22 +50,9 @@ def download_era5_year(
     months: list = None,
     time_step: str = "daily",
 ) -> Path:
-    """
-    Download ERA5/ERA5-Land data for a single year and variable group.
-
-    Args:
-        client: CDS API client instance
-        year: Year to download
-        variable_group: Name of the variable group (for filename)
-        variables: List of CDS variable names
-        dataset: CDS dataset identifier
-        bbox: Spatial bounding box dict from config
-        output_dir: Directory to save files
-        months: List of months to download (default: monsoon Jun-Sep)
-        time_step: 'hourly' or 'daily'
-    """
+    
     if months is None:
-        months = [6, 7, 8, 9]  # Monsoon season
+        months = [6, 7, 8, 9]
 
     output_dir.mkdir(parents=True, exist_ok=True)
     month_label = "monsoon" if months == [6, 7, 8, 9] else "full"
@@ -96,27 +63,21 @@ def download_era5_year(
         print(f"  [SKIP] {filename} already exists.")
         return filepath
 
-    # CDS area format: [North, West, South, East]
     area = [
-        bbox["max_latitude"] + 0.2,   # North
-        bbox["min_longitude"] - 0.2,  # West
-        bbox["min_latitude"] - 0.2,   # South
-        bbox["max_longitude"] + 0.2,  # East
+        bbox["max_latitude"] + 0.2,
+        bbox["min_longitude"] - 0.2,
+        bbox["min_latitude"] - 0.2,
+        bbox["max_longitude"] + 0.2,
     ]
 
-    # Build month and day lists
     month_strs = [f"{m:02d}" for m in months]
 
-    # Generate all days in the month range
     day_strs = [f"{d:02d}" for d in range(1, 32)]
 
-    # Build time selection based on resolution
     if time_step == "hourly":
         time_list = [f"{h:02d}:00" for h in range(24)]
     else:
-        # Daily aggregates: request all hours, CDS returns daily stats
-        # For ERA5-Land, we request 00:00 to get daily accumulated values
-        time_list = [f"{h:02d}:00" for h in range(0, 24, 3)]  # 3-hourly for manageable size
+        time_list = [f"{h:02d}:00" for h in range(0, 24, 3)]
 
     request_params = {
         "product_type": "reanalysis",
@@ -143,11 +104,9 @@ def download_era5_year(
         return filepath
     except Exception as e:
         print(f"  [ERROR] Failed to download {filename}: {e}")
-        # Clean up partial file
         if filepath.exists():
             filepath.unlink()
         raise
-
 
 def main():
     import argparse
@@ -179,7 +138,6 @@ def main():
     output_dir = Path(config["paths"]["raw_data_dir"]) / "era5"
     monsoon_months = config["temporal"]["monsoon_months"]
 
-    # Determine years
     if args.years:
         years = args.years
     elif args.mode == "train":
@@ -200,7 +158,6 @@ def main():
             [s_te, e_te] if isinstance(s_te, int) else config["temporal"]["test_years"]
         ))
 
-    # Determine variable groups
     if "all" in args.groups:
         groups = list(ERA5_VARIABLES.keys())
     else:
@@ -216,7 +173,6 @@ def main():
     print(f"Output: {output_dir}")
     print("=" * 70)
 
-    # Check CDS API configuration
     cdsapirc = Path.home() / ".cdsapirc"
     if not cdsapirc.exists():
         print("\n[ERROR] ~/.cdsapirc not found!")
@@ -256,7 +212,6 @@ def main():
             except Exception as e:
                 failed.append((year, group_name, str(e)))
 
-    # Summary
     print(f"\n{'=' * 70}")
     print("ERA5 DOWNLOAD SUMMARY")
     print(f"{'=' * 70}")
@@ -269,7 +224,5 @@ def main():
             print(f"    [FAIL] {yr}/{grp}: {err}")
     print(f"{'=' * 70}")
 
-
 if __name__ == "__main__":
     main()
-

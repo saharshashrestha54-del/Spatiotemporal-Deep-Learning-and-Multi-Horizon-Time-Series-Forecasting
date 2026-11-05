@@ -1,25 +1,15 @@
-"""
-Visualization and Evaluation Plotting
-Generates high-resolution comparative figures:
-1. Actual vs Predicted Monsoon Precipitation Time-Series (24h lead time)
-2. Runoff Potential Index (RPI) Alert Matrix & Threshold Progression
-"""
-
-import matplotlib.pyplot as plt
+﻿import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 from pathlib import Path
-
 
 def plot_forecast_and_rpi(data_path: Path, output_dir: Path):
     output_dir.mkdir(parents=True, exist_ok=True)
     df = pd.read_csv(data_path)
 
-    # Set publication aesthetic
     plt.style.use('seaborn-v0_8-whitegrid' if 'seaborn-v0_8-whitegrid' in plt.style.available else 'default')
     fig, axes = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
 
-    # Subplot 1: Daily Monsoon Precipitation & Antecedent Saturation
     ax1 = axes[0]
     ax1.plot(pd.to_datetime(df['date']), df['precip_mean_mm'], color='#1f77b4', lw=2, label='Observed Precipitation (CHIRPS)')
     ax1.set_ylabel('Precipitation (mm/day)', fontsize=12, fontweight='bold', color='#1f77b4')
@@ -34,13 +24,11 @@ def plot_forecast_and_rpi(data_path: Path, output_dir: Path):
     lines_2, labels_2 = ax1_twin.get_legend_handles_labels()
     ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc='upper left')
 
-    # Subplot 2: Dynamic Runoff Potential Index (RPI) and Warning Levels
     ax2 = axes[1]
     dates = pd.to_datetime(df['date'])
     rpi = df['RPI']
     ax2.plot(dates, rpi, color='#2ca02c', lw=2.2, label='Runoff Potential Index (RPI)')
 
-    # Alert Bands
     ax2.axhline(0.50, color='gold', linestyle='--', lw=1.5, label='Watch Level (RPI=0.50)')
     ax2.axhline(0.75, color='orange', linestyle='--', lw=1.5, label='Warning Level (RPI=0.75)')
     ax2.axhline(1.00, color='red', linestyle='--', lw=1.5, label='Evacuation Level (RPI=1.00)')
@@ -62,10 +50,8 @@ def plot_forecast_and_rpi(data_path: Path, output_dir: Path):
     plt.close()
     print(f"Publication-ready evaluation figure saved to: {out_fig}")
 
-
 if __name__ == "__main__":
     plot_forecast_and_rpi(
         Path("data/processed/monsoon_features_2022.csv"),
         Path("figures")
     )
-

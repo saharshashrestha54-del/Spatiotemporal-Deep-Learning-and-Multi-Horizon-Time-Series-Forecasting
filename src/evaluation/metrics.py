@@ -1,21 +1,7 @@
-"""
-Hydrological & Meteorological Forecast Evaluation Metrics
-Project: Monsoon Precipitation Forecasting & Proactive Flood Early Warning in Nepal
-
-Implements standard benchmark metrics:
-- Kling-Gupta Efficiency (KGE)
-- Root Mean Squared Error (RMSE)
-- Mean Absolute Error (MAE)
-- Probability of Detection (POD) / Recall
-- False Alarm Ratio (FAR)
-- Critical Success Index (CSI) / Threat Score
-"""
-
-import numpy as np
-
+﻿import numpy as np
 
 def compute_continuous_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
-    """Computes RMSE, MAE, Pearson r, and Kling-Gupta Efficiency (KGE)."""
+    
     y_true = np.asarray(y_true, dtype=float)
     y_pred = np.asarray(y_pred, dtype=float)
 
@@ -26,10 +12,8 @@ def compute_continuous_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     rmse = np.sqrt(np.mean((y_p - y_t) ** 2))
     mae = np.mean(np.abs(y_p - y_t))
 
-    # Pearson r
     r = np.corrcoef(y_t, y_p)[0, 1] if len(y_t) > 1 else 0.0
 
-    # KGE components
     sigma_sim = np.std(y_p)
     sigma_obs = np.std(y_t)
     mu_sim = np.mean(y_p)
@@ -47,9 +31,8 @@ def compute_continuous_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
         "KGE": float(kge)
     }
 
-
 def compute_contingency_metrics(y_true_binary: np.ndarray, y_pred_binary: np.ndarray) -> dict:
-    """Computes POD, FAR, and CSI for threshold-based flood alerts."""
+    
     y_true = np.asarray(y_true_binary, dtype=int)
     y_pred = np.asarray(y_pred_binary, dtype=int)
 
@@ -70,4 +53,3 @@ def compute_contingency_metrics(y_true_binary: np.ndarray, y_pred_binary: np.nda
         "Misses": int(misses),
         "False_Alarms": int(false_alarms)
     }
-

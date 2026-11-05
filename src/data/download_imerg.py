@@ -1,27 +1,4 @@
-"""
-NASA GPM IMERG Precipitation Data Acquisition Pipeline
-Project: Monsoon Precipitation Forecasting & Flood Early Warning in Nepal
-
-Downloads GPM IMERG (Integrated Multi-satellitE Retrievals for GPM) gridded
-precipitation data from NASA GES DISC, clips to the Nepal spatial domain.
-
-PREREQUISITES:
-    1. Create a free NASA Earthdata account: https://urs.earthdata.nasa.gov/users/new
-    2. Go to: https://disc.gsfc.nasa.gov/ → Login → Approve GES DISC data access
-    3. Generate a Bearer Token:
-         - Go to https://urs.earthdata.nasa.gov/profile
-         - Under "Generate Token" → create token
-    4. Set your token as an environment variable:
-         set NASA_EARTHDATA_TOKEN=<your-token>
-       Or save it in a file at: ~/.nasa_earthdata_token
-
-IMERG Products:
-    - GPM_3IMERGDF (Final Daily, 0.1°, ~3 month latency) ← recommended for research
-    - GPM_3IMERGDL (Late Daily, 0.1°, ~14 hour latency)
-    - GPM_3IMERGHH (Half-Hourly, 0.1°, ~4 month latency)
-"""
-
-import os
+﻿import os
 import sys
 import yaml
 import json
@@ -32,44 +9,32 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from tqdm import tqdm
 
-
 def load_config(config_path: str = "configs/config.yaml") -> dict:
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
-
 def get_earthdata_token() -> str:
-    """Retrieve NASA Earthdata token from environment variable or file."""
-    # Check environment variable first
+    
     token = os.environ.get("NASA_EARTHDATA_TOKEN")
     if token:
         return token.strip()
 
-    # Check token file
     token_file = Path.home() / ".nasa_earthdata_token"
     if token_file.exists():
         return token_file.read_text().strip()
 
     return None
 
-
 def build_opendap_url(date: datetime, product: str = "GPM_3IMERGDF") -> str:
-    """
-    Build the OPeNDAP/HTTPS URL for an IMERG daily file.
-
-    GES DISC serves IMERG via OPeNDAP and HTTPS:
-      https://gpm1.gesdisc.eosdis.nasa.gov/data/GPM_L3/GPM_3IMERGDF.07/YYYY/MM/
-    """
+    
     year = date.strftime("%Y")
     month = date.strftime("%m")
     day_of_year = date.strftime("%j")
 
     if product == "GPM_3IMERGDF":
-        # Final Run Daily V07
         filename = f"3B-DAY.MS.MRG.3IMERG.{date.strftime('%Y%m%d')}-S000000-E235959.V07B.nc4"
         base = f"https://gpm1.gesdisc.eosdis.nasa.gov/data/GPM_L3/GPM_3IMERGDF.07/{year}/{month}/"
     elif product == "GPM_3IMERGDL":
-        # Late Run Daily V07
         filename = f"3B-DAY-L.MS.MRG.3IMERG.{date.strftime('%Y%m%d')}-S000000-E235959.V07B.nc4"
         base = f"https://gpm1.gesdisc.eosdis.nasa.gov/data/GPM_L3/GPM_3IMERGDL.07/{year}/{month}/"
     else:
@@ -77,14 +42,13 @@ def build_opendap_url(date: datetime, product: str = "GPM_3IMERGDF") -> str:
 
     return base + filename
 
-
 def download_imerg_file(
     url: str,
     output_path: Path,
     token: str,
     retries: int = 3,
 ) -> bool:
-    """Download a single IMERG file with NASA Earthdata authentication."""
+    
     headers = {"Authorization": f"Bearer {token}"}
 
     for attempt in range(1, retries + 1):
@@ -120,16 +84,14 @@ def download_imerg_file(
 
     return False
 
-
 def crop_imerg_to_nepal(
     input_path: Path,
     output_path: Path,
     bbox: dict,
     buffer_deg: float = 0.2,
 ) -> Path:
-    """Crop global IMERG file to Nepal bounding box."""
+    
     with xr.open_dataset(input_path) as ds:
-        # IMERG uses 'lon' and 'lat' coordinate names
         lon_name = "lon" if "lon" in ds.coords else "longitude"
         lat_name = "lat" if "lat" in ds.coords else "latitude"
 
@@ -138,21 +100,18 @@ def crop_imerg_to_nepal(
         lat_slice = slice(bbox["min_latitude"] - buffer_deg,
                           bbox["max_latitude"] + buffer_deg)
 
-        # Check if latitude is descending
         if ds[lat_name][0] > ds[lat_name][-1]:
             lat_slice = slice(bbox["max_latitude"] + buffer_deg,
                               bbox["min_latitude"] - buffer_deg)
 
         ds_cropped = ds.sel({lon_name: lon_slice, lat_name: lat_slice})
 
-        # Compress and save
         encoding = {}
         for var in ds_cropped.data_vars:
             encoding[var] = {"zlib": True, "complevel": 5}
         ds_cropped.to_netcdf(output_path, encoding=encoding)
 
     return output_path
-
 
 def download_imerg_monsoon(
     year: int,
@@ -163,10 +122,7 @@ def download_imerg_monsoon(
     product: str = "GPM_3IMERGDF",
     keep_global: bool = False,
 ) -> Path:
-    """
-    Download all daily IMERG files for a monsoon season, crop to Nepal,
-    and merge into a single monsoon NetCDF.
-    """
+    
     if monsoon_months is None:
         monsoon_months = [6, 7, 8, 9]
 
@@ -181,7 +137,6 @@ def download_imerg_monsoon(
         print(f"  [SKIP] {merged_filename} already exists.")
         return merged_path
 
-    # Generate date range for monsoon months
     dates = []
     for month in monsoon_months:
         start = datetime(year, month, 1)
@@ -211,7 +166,6 @@ def download_imerg_monsoon(
             skip_count += 1
             continue
 
-        # Download global file
         if not daily_global.exists():
             success = download_imerg_file(url, daily_global, token)
             if not success:
@@ -219,7 +173,6 @@ def download_imerg_monsoon(
                 continue
             download_count += 1
 
-        # Crop to Nepal
         try:
             crop_imerg_to_nepal(daily_global, daily_nepal, bbox)
             daily_files.append(daily_nepal)
@@ -228,7 +181,6 @@ def download_imerg_monsoon(
             fail_count += 1
             continue
         finally:
-            # Remove global file to save disk space
             if not keep_global and daily_global.exists():
                 daily_global.unlink()
 
@@ -238,7 +190,6 @@ def download_imerg_monsoon(
         print(f"  [ERROR] No files available for {year}. Skipping merge.")
         return None
 
-    # Merge all daily files into a single monsoon NetCDF
     print(f"  Merging {len(daily_files)} daily files into {merged_filename}...")
     try:
         ds_merged = xr.open_mfdataset(
@@ -253,7 +204,6 @@ def download_imerg_monsoon(
         ds_merged.to_netcdf(merged_path, encoding=encoding)
         print(f"  [OK] Saved merged file: {merged_path}")
 
-        # Clean up daily cropped files
         for f in daily_files:
             if f.exists():
                 f.unlink()
@@ -263,7 +213,6 @@ def download_imerg_monsoon(
     except Exception as e:
         print(f"  [ERROR] Failed to merge: {e}")
         return None
-
 
 def main():
     import argparse
@@ -294,7 +243,6 @@ def main():
     output_dir = Path(config["paths"]["raw_data_dir"]) / "imerg"
     monsoon_months = config["temporal"]["monsoon_months"]
 
-    # Determine years
     if args.years:
         years = args.years
     elif args.mode == "train":
@@ -325,7 +273,6 @@ def main():
     print(f"Output:   {output_dir}")
     print("=" * 70)
 
-    # Check authentication
     token = get_earthdata_token()
     if not token:
         print("\n[ERROR] NASA Earthdata token not found!")
@@ -364,7 +311,6 @@ def main():
         except Exception as e:
             failed.append((year, str(e)))
 
-    # Summary
     print(f"\n{'=' * 70}")
     print("IMERG DOWNLOAD SUMMARY")
     print(f"{'=' * 70}")
@@ -377,7 +323,5 @@ def main():
             print(f"    ✗ {yr}: {err}")
     print(f"{'=' * 70}")
 
-
 if __name__ == "__main__":
     main()
-

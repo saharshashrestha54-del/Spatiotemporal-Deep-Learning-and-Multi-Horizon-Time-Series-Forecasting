@@ -1,49 +1,57 @@
-# Python / Bytecode
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-
-# Virtual environments
-venv/
-.venv/
 env/
+venv/
 ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Large raw satellite data & archives (can be downloaded via scripts in src/data/)
-data/raw/*.nc
-data/raw/*.zip
-data/raw/chirps/temp_*
-data/raw/imerg/temp_*
-data/raw/era5/temp_*
+# Virtual Environment
+.venv/
+env.bak/
+venv.bak/
 
-# Model checkpoints & large binary dumps
-saved_models/
-*.pt
+# Environment variables & secrets
+.env
+*.token
+*.key
+.cdsapirc
 
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints
+# Large Raw Datasets & Shapefiles
+data/raw/
+*.nc
+*.zip
+*.tar.gz
+*.gdb
 
-# IDE / OS metadata
+# Large GIS layers
+data/shapefiles/admin/npl_admin2.geojson
+data/shapefiles/admin/npl_admin3.geojson
+data/shapefiles/basins/*.shp
+data/shapefiles/basins/*.dbf
+
+# Temporary MS Word lock files
+~$*
+
+# IDE & OS
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
-
-# MS Office temp lock files
-~$*.docx
-~$*.xlsx
-test_*.py
-test_*.docx
-
-# LaTeX build artifacts (if compiled locally)
-*.aux
-*.bbl
-*.blg
-*.log
-*.out
-*.synctex.gz
-*.toc
-*.fls
-*.fdb_latexmk

@@ -1,16 +1,4 @@
-"""
-Baseline Models Trainer & Multi-Horizon Evaluation Harness
-Project: Monsoon Precipitation Forecasting & Proactive Flood Early Warning in Nepal
-
-Implements:
-1. Baseline Linear Regressor (Persistence / Multivariate)
-2. Random Forest Regressor & Classifier
-3. XGBoost Gradient Boosted Trees (Configured per configs/config.yaml)
-4. Evaluation across 1-day (24h) and 2-day (48h) lead times
-5. Export of experimental metrics table matching paper Table 1
-"""
-
-import sys
+﻿import sys
 import yaml
 import numpy as np
 import pandas as pd
@@ -21,11 +9,9 @@ import xgboost as xgb
 
 from src.evaluation.metrics import compute_continuous_metrics, compute_contingency_metrics
 
-
 def load_config(config_path: str = "configs/config.yaml") -> dict:
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
-
 
 def run_baseline_experiments(data_path: Path, output_dir: Path):
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -41,7 +27,6 @@ def run_baseline_experiments(data_path: Path, output_dir: Path):
     print(f"Loaded {len(df)} daily samples for training and evaluation.")
     print(f"Input features ({len(feature_cols)}): {feature_cols}")
 
-    # Temporal Train/Test split: First 75% for calibration, remaining 25% for test
     split_idx = int(len(df) * 0.75)
     train_df = df.iloc[:split_idx]
     test_df = df.iloc[split_idx:]
@@ -54,13 +39,11 @@ def run_baseline_experiments(data_path: Path, output_dir: Path):
 
     results = []
 
-    # 1. Baseline Ridge Regressor
     ridge = Ridge(alpha=1.0)
     ridge.fit(X_train, y_train_1d)
     pred_ridge = ridge.predict(X_test)
     m_ridge = compute_continuous_metrics(y_test_1d, pred_ridge)
     
-    # Binary classification proxy from predicted rainfall
     thresh = y_train_1d.quantile(0.80)
     c_ridge = compute_contingency_metrics(y_test_binary, (pred_ridge > thresh).astype(int))
     results.append({
@@ -73,7 +56,6 @@ def run_baseline_experiments(data_path: Path, output_dir: Path):
         "FAR": round(c_ridge["FAR"], 2)
     })
 
-    # 2. Random Forest Baseline
     rf = RandomForestRegressor(n_estimators=100, max_depth=6, random_state=42)
     rf.fit(X_train, y_train_1d)
     pred_rf = rf.predict(X_test)
@@ -89,7 +71,6 @@ def run_baseline_experiments(data_path: Path, output_dir: Path):
         "FAR": round(c_rf["FAR"], 2)
     })
 
-    # 3. XGBoost Model (Configured from config.yaml)
     xgb_model = xgb.XGBRegressor(
         n_estimators=300,
         max_depth=6,
@@ -112,7 +93,6 @@ def run_baseline_experiments(data_path: Path, output_dir: Path):
         "FAR": round(c_xgb["FAR"], 2)
     })
 
-    # Convert results into clean DataFrame
     df_results = pd.DataFrame(results)
     out_table = output_dir / "baseline_model_evaluation_table.csv"
     df_results.to_csv(out_table, index=False)
@@ -126,7 +106,6 @@ def run_baseline_experiments(data_path: Path, output_dir: Path):
 
     return df_results
 
-
 def main():
     config = load_config()
     data_path = Path(config["paths"]["processed_data_dir"]) / "monsoon_features_2022.csv"
@@ -138,7 +117,5 @@ def main():
 
     run_baseline_experiments(data_path, output_dir)
 
-
 if __name__ == "__main__":
     main()
-

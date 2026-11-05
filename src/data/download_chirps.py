@@ -1,16 +1,4 @@
-"""
-CHIRPS v2.0 Satellite Precipitation Acquisition & Cropping Pipeline
-Project: Monsoon Precipitation Forecasting & Flood Early Warning in Nepal
-
-Downloads global daily CHIRPS NetCDF files from UCSB CHC, clips them to the Nepal
-spatial bounding box specified in configs/config.yaml, and saves efficient NetCDF/Zarr files.
-
-Supports two download strategies:
-  1. Annual global NetCDF (default) — fast but large (~1 GB/year)
-  2. Per-day TIFF fallback — smaller files, avoids rate limiting on large downloads
-"""
-
-import os
+﻿import os
 import sys
 import time
 import yaml
@@ -22,30 +10,23 @@ from tqdm import tqdm
 import xarray as xr
 import numpy as np
 
-
-# Delay between consecutive year downloads to avoid UCSB rate limiting (seconds)
 INTER_YEAR_DELAY = 30
-# Max retries per file download
 MAX_RETRIES = 3
-# Delay between retries (seconds) — doubles each retry (exponential backoff)
 RETRY_BASE_DELAY = 60
 
-
 class DownloadProgressBar(tqdm):
-    """Visual progress bar for urllib downloads."""
+    
     def update_to(self, b=1, bsize=1, tsize=None):
         if tsize is not None:
             self.total = tsize
         self.update(b * bsize - self.n)
 
-
 def load_config(config_path: str = "configs/config.yaml") -> dict:
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
-
 def _download_with_retry(url: str, dest: Path, retries: int = MAX_RETRIES) -> bool:
-    """Download a file with exponential backoff retry on failure."""
+    
     for attempt in range(1, retries + 1):
         try:
             with DownloadProgressBar(unit="B", unit_scale=True, miniters=1,
@@ -78,20 +59,13 @@ def _download_with_retry(url: str, dest: Path, retries: int = MAX_RETRIES) -> bo
                 return False
     return False
 
-
 def download_chirps_daily_tiffs(
     year: int,
     bbox: dict,
     output_dir: Path,
     monsoon_months: list = None,
 ) -> Path:
-    """
-    Fallback strategy: download per-day CHIRPS TIFF files and merge.
-    CHIRPS daily TIFFs are much smaller (~15 MB each) and less likely to be rate-limited.
-
-    URL pattern: https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_daily/tifs/p05/YYYY/
-                 chirps-v2.0.YYYY.MM.DD.tif.gz
-    """
+    
     if monsoon_months is None:
         monsoon_months = [6, 7, 8, 9]
 
@@ -108,7 +82,6 @@ def download_chirps_daily_tiffs(
     base_url = f"https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_daily/tifs/p05/{year}/"
     daily_files = []
 
-    # Generate dates for monsoon months
     for month in monsoon_months:
         start = datetime(year, month, 1)
         end = datetime(year, month + 1, 1) if month < 12 else datetime(year + 1, 1, 1)
@@ -123,7 +96,6 @@ def download_chirps_daily_tiffs(
                 success = _download_with_retry(tif_url, tif_path, retries=2)
                 if success:
                     daily_files.append(tif_path)
-                # Small delay between daily files
                 time.sleep(1)
             else:
                 daily_files.append(tif_path)
@@ -136,7 +108,6 @@ def download_chirps_daily_tiffs(
 
     print(f"  [MERGE] Combining {len(daily_files)} daily files into {cropped_filename}...")
     try:
-        # Open all daily TIFFs and merge
         datasets = []
         for f in sorted(daily_files):
             try:
@@ -147,7 +118,6 @@ def download_chirps_daily_tiffs(
 
         if datasets:
             ds_merged = xr.concat(datasets, dim="time")
-            # Crop to Nepal bbox
             lat_min, lat_max = bbox["min_latitude"] - 0.2, bbox["max_latitude"] + 0.2
             lon_min, lon_max = bbox["min_longitude"] - 0.2, bbox["max_longitude"] + 0.2
 
@@ -160,7 +130,6 @@ def download_chirps_daily_tiffs(
             ds_cropped.to_netcdf(cropped_filepath)
             print(f"  [OK] Saved: {cropped_filepath}")
 
-            # Cleanup temp
             for f in daily_files:
                 f.unlink()
             temp_dir.rmdir()
@@ -171,7 +140,6 @@ def download_chirps_daily_tiffs(
 
     return None
 
-
 def download_and_crop_chirps(
     year: int,
     bbox: dict,
@@ -179,11 +147,7 @@ def download_and_crop_chirps(
     base_url: str = "https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_daily/netcdf/p05/",
     monsoon_only: bool = True
 ) -> Path:
-    """
-    Downloads the annual global CHIRPS NetCDF, clips spatial bounding box,
-    optionally filters for monsoon months (June-Sept), and saves the cropped file.
-    Falls back to per-day TIFF downloads if annual file is unavailable.
-    """
+    
     output_dir.mkdir(parents=True, exist_ok=True)
     cropped_filename = f"chirps_nepal_{year}{'_monsoon' if monsoon_only else ''}.nc"
     cropped_filepath = output_dir / cropped_filename
@@ -211,13 +175,10 @@ def download_and_crop_chirps(
             raise RuntimeError(f"Both annual NetCDF and daily TIFF strategies failed for {year}.")
 
         print(f"[{year}] Cropping to Nepal Bounding Box: {bbox}")
-        # Open dataset with xarray
         with xr.open_dataset(temp_download) as ds:
-            # CHIRPS coordinates: latitude ('latitude'), longitude ('longitude'), time ('time')
             lat_slice = slice(bbox["min_latitude"] - 0.2, bbox["max_latitude"] + 0.2)
             lon_slice = slice(bbox["min_longitude"] - 0.2, bbox["max_longitude"] + 0.2)
 
-            # Check latitude orientation (CHIRPS is typically descending or ascending)
             if ds.latitude[0] > ds.latitude[-1]:
                 lat_slice = slice(bbox["max_latitude"] + 0.2, bbox["min_latitude"] - 0.2)
 
@@ -228,7 +189,6 @@ def download_and_crop_chirps(
                 ds_cropped = ds_cropped.sel(time=ds_cropped.time.dt.month.isin([6, 7, 8, 9]))
 
             print(f"[{year}] Saving cropped NetCDF to {cropped_filepath}...")
-            # Save cropped dataset with compression
             encoding = {"precip": {"zlib": True, "complevel": 5}}
             ds_cropped.to_netcdf(cropped_filepath, encoding=encoding)
 
@@ -236,13 +196,11 @@ def download_and_crop_chirps(
         return cropped_filepath
 
     finally:
-        # Cleanup large global file
         if temp_download.exists():
             temp_download.unlink()
 
-
 def get_all_years(config: dict) -> list:
-    """Return the full list of years from train, val, and test splits."""
+    
     train_start, train_end = config["temporal"]["train_years"]
     val_start, val_end = config["temporal"]["val_years"]
     test_start, test_end = config["temporal"]["test_years"]
@@ -250,7 +208,6 @@ def get_all_years(config: dict) -> list:
                 list(range(val_start, val_end + 1)) + \
                 list(range(test_start, test_end + 1))
     return sorted(set(all_years))
-
 
 def main():
     import argparse
@@ -277,7 +234,6 @@ def main():
     raw_dir = Path(config["paths"]["raw_data_dir"]) / "chirps"
     base_url = config["data_sources"]["chirps"]["url_base"]
 
-    # Determine which years to download
     if args.years:
         years = args.years
     elif args.mode == "train":
@@ -288,7 +244,7 @@ def main():
         years = list(range(s, e + 1))
     elif args.mode == "test":
         years = config["temporal"]["test_years"]
-    else:  # "all"
+    else:
         years = get_all_years(config)
 
     print(f"=" * 70)
@@ -318,12 +274,10 @@ def main():
             print(f"[{yr}] ERROR: {e}")
             failed.append((yr, str(e)))
 
-        # Throttle between years to avoid UCSB rate limiting
         if i < len(years):
             print(f"\n  [THROTTLE] Waiting {INTER_YEAR_DELAY}s before next download...")
             time.sleep(INTER_YEAR_DELAY)
 
-    # Summary
     print(f"\n{'=' * 70}")
     print(f"DOWNLOAD SUMMARY")
     print(f"{'=' * 70}")
@@ -335,7 +289,6 @@ def main():
         for yr, err in failed:
             print(f"    ✗ {yr}: {err}")
     print(f"{'=' * 70}")
-
 
 if __name__ == "__main__":
     main()
