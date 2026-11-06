@@ -170,7 +170,7 @@ Surface meteorological data (2m temperature, surface pressure and 10m wind speed
 The Integrated Multi-satellitE Retrievals for GPM (IMERG V07) \cite{huffman2020integrated} product provides a combination of precipitation data from both passive microwave sensors (GMI) and infrared sensors on the Global Precipitation Measurement satellites. Gridded precipitation data is available at $0.1^\circ$ resolution on a daily/half-hourly scale through NASA Earthdata GES DISC (\texttt{download\_imerg.py}).
 
 \subsubsection{HydroBASINS and Administrative Delineations}
-Hydrological data was aggregated using HydroBASINS Asia (Level 4, 5 and 6) generated from high resolution digital elevation models (HydroSHEDS). The following river basins were defined:
+Hydrological data was aggregated using HydroBASINS Asia (Level 4, 5 and 6) generated from high resolution digital elevation models (HydroSHEDS) \cite{lehner2013global}. The following river basins were defined:
 \begin{itemize}
 \item \textbf{Koshi River Basin (Eastern Nepal):} Total area $74{,}814\,\text{km}^2$ covering tributaries of Sapta Koshi, Sun Koshi and Arun rivers.
 \item \textbf{Gandaki / Narayani Basin (Central Nepal):} Total area $46{,}300\,\text{km}^2$ covering the main Trishuli, Marsyangdi and Kali Gandaki corridors.
@@ -248,10 +248,10 @@ As a foundational linear benchmark, Ridge regression optimizes an L2-penalized s
 where $\lambda > 0$ controls parameter shrinkage, mitigating multicollinearity among consecutive precipitation lag features.
 
 \subsubsection{Random Forest Regressor}
-Random Forest constructs an ensemble of $B = 100$ decorrelated decision trees using bootstrap aggregating (bagging) and random feature subspace projection. At each node split, a subset of $m \approx \sqrt{p}$ features is sampled, capturing non-linear thresholding effects without assuming parametric data distributions.
+Random Forest \cite{breiman2001random} constructs an ensemble of $B = 100$ decorrelated decision trees using bootstrap aggregating (bagging) and random feature subspace projection. At each node split, a subset of $m \approx \sqrt{p}$ features is sampled, capturing non-linear thresholding effects without assuming parametric data distributions.
 
 \subsubsection{Gradient-Boosted Decision Trees (XGBoost)}
-XGBoost optimizes an ensemble of classification and regression trees (CART) in an iterative, stage-wise boosting manner using second-order Taylor approximations of the objective function:
+XGBoost \cite{chen2016xgboost} optimizes an ensemble of classification and regression trees (CART) in an iterative, stage-wise boosting manner using second-order Taylor approximations of the objective function:
 \begin{equation}
 \mathcal{L}^{(m)} = \sum_{i=1}^{n} \left[ g_i f_m(\mathbf{x}_i) + \frac{1}{2} h_i f_m^2(\mathbf{x}_i) \right] + \Omega(f_m)
 \label{eq:xgboost}
@@ -259,7 +259,7 @@ XGBoost optimizes an ensemble of classification and regression trees (CART) in a
 where $g_i = \partial_{\hat{y}} l(y_i, \hat{y})$ and $h_i = \partial^2_{\hat{y}} l(y_i, \hat{y})$ denote first- and second-order loss gradients, and $\Omega(f) = \gamma T + \frac{1}{2} \lambda \sum w_j^2$ penalizes tree complexity ($T$ leaves with weights $w$). Hyperparameters configured in \texttt{config.yaml} include $n_{\text{trees}} = 300$, maximum tree depth $d = 6$, learning rate $\eta = 0.03$, subsampling ratio $0.80$, and column subsampling $0.80$.
 
 \subsubsection{Bidirectional Long Short-Term Memory (Bi-LSTM)}
-To capture bidirectional temporal dependencies across sequential monsoon storm progressions, we implement a 2-layer Bidirectional LSTM neural network (Fig.~\ref{fig:models}). For an input sequence of length $T = 7$ days $\mathbf{X} = (\mathbf{x}_1, \dots, \mathbf{x}_T)$, the network processes states forward ($\overrightarrow{\mathbf{h}}_t$) and backward ($\overleftarrow{\mathbf{h}}_t$) through recurrent memory cells:
+To capture bidirectional temporal dependencies across sequential monsoon storm progressions, following deep recurrent hydrological modeling principles \cite{kratzert2018rainfall}, we implement a 2-layer Bidirectional LSTM neural network (Fig.~\ref{fig:models}). For an input sequence of length $T = 7$ days $\mathbf{X} = (\mathbf{x}_1, \dots, \mathbf{x}_T)$, the network processes states forward ($\overrightarrow{\mathbf{h}}_t$) and backward ($\overleftarrow{\mathbf{h}}_t$) through recurrent memory cells:
 \begin{align}
 \mathbf{i}_t &= \sigma(\mathbf{W}_{xi} \mathbf{x}_t + \mathbf{W}_{hi} \mathbf{h}_{t-1} + \mathbf{b}_i) \\
 \mathbf{f}_t &= \sigma(\mathbf{W}_{xf} \mathbf{x}_t + \mathbf{W}_{hf} \mathbf{h}_{t-1} + \mathbf{b}_f) \\
@@ -317,7 +317,7 @@ For 2D gridded precipitation prediction across the Nepal bounding domain, ConvLS
 where $\ast$ denotes the 2D spatial convolution operator with $3 \times 3$ kernel filters, $\odot$ represents the Hadamard element-wise product, $\mathbf{X}_t \in \mathbb{R}^{B \times C \times H \times W}$ is the input tensor with $C = 4$ channels (Precipitation, Layer 1 Soil Moisture, SRTM Digital Elevation, and Lagged Rain), and $\mathbf{H}_t \in \mathbb{R}^{B \times d_c \times H \times W}$ represents the spatial hidden feature maps across 3 stacked recurrent layers with hidden channel dimensions $[64, 64, 32]$.
 
 \subsection{Evaluation Protocols and Metrics}
-Continuous precipitation forecasting accuracy is assessed using Root Mean Square Error (RMSE), Mean Absolute Error (MAE), Pearson correlation coefficient ($r$), and the Kling-Gupta Efficiency (KGE):
+Continuous precipitation forecasting accuracy is assessed using Root Mean Square Error (RMSE), Mean Absolute Error (MAE), Pearson correlation coefficient ($r$), and the Kling-Gupta Efficiency (KGE) \cite{gupta2009decomposition}:
 \begin{equation}
 \text{KGE} = 1 - \sqrt{(r - 1)^2 + \left(\frac{\sigma_{\text{sim}}}{\sigma_{\text{obs}}} - 1\right)^2 + \left(\frac{\mu_{\text{sim}}}{\mu_{\text{obs}}} - 1\right)^2}
 \label{eq:kge}
